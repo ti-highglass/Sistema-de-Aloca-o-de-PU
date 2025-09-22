@@ -1,0 +1,15 @@
+<RPOrderGenerator xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<QueuedItem>
+<Driver>D006</Driver>
+<TransactionId>000</TransactionId>
+<PartCode>retangulo</PartCode>
+<CustomerCode>Description-vehicle</CustomerCode>
+<CustomerDescription>Description-Kelvin</CustomerDescription>
+<Material>aço</Material>
+<Thickness>1</Thickness>
+<Order>OP-00009</Order>
+<QtyRequired>7</QtyRequired>
+<DeliveryDate>09/09/2025</DeliveryDate>
+<FilePart>101010\retangulo</FilePart>
+</QueuedItem>
+</RPOrderGenerator>

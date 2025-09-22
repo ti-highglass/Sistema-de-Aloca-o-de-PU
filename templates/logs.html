@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs - Sistema Alocação PU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="{{ url_for('static', filename='js/protection.js') }}"></script>
+</head>
+<body class="bg-gray-100 pt-6">
+    {% include 'navbar.html' %}
+    
+    <div class="container mx-auto px-4">
+        <div class="container-quadrado">
+            <div class="bg-white rounded-b-3xl shadow-3xl overflow-hidden animate-fade-in border border-gray-200 border-t-0">
+                <div class="header-compact text-center">
+                    <h1 class="text-2xl font-bold text-black mb-2">Logs do Sistema</h1>
+                </div>
+
+                <div class="p-6 md:p-8 w-full">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-6 shadow-sm animate-fade-in w-full">
+                        
+                        <!-- Busca e ações -->
+                        <div class="bg-gray-50 rounded-xl p-6 mb-6 text-center">
+                            <div class="mb-4">
+                                <button onclick="gerarExcel()" class="btn-large bg-green-600 hover:bg-green-700 text-white">
+                                    <i class="fas fa-file-excel mr-2"></i> Gerar Excel
+                                </button>
+                            </div>
+                            <input type="text" id="campoBusca" placeholder="Buscar por usuário, ação ou detalhes..." class="form-input-large" style="max-width: 500px; margin: 0 auto;">
+                        </div>
+
+                        <!-- Tabela -->
+                        <div class="overflow-x-auto">
+                            <table id="tabela-logs" class="w-full border-collapse border border-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(0)">DATA</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(1)">USUÁRIO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(2)">AÇÃO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left">DETALHES</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="logs-tbody">
+                                    <tr>
+                                        <td colspan="4" class="border border-gray-200 px-4 py-6 text-center text-gray-500">
+                                            Carregando logs...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Paginação -->
+                        <div id="paginacao" class="flex justify-center items-center mt-6 gap-2">
+                            <!-- Será preenchido via JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/logs.js') }}"></script>
+</body>
+</html>

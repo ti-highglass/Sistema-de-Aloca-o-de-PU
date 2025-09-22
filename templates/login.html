@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema Alocação PU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-container">
+            <img src="{{ url_for('static', filename='img/logo_opera 2 (1).png') }}" alt="Opera Logo" class="logo" onerror="this.src='{{ url_for('static', filename='img/logo_opera 2 (1).png') }}'">
+            <h1 style="color: #333; font-size: 28px; font-weight: 700; margin: 0;">Otimização de PU</h1>
+            <p style="color: #666; font-size: 16px; margin: 8px 0 0 0;">Faça login para continuar</p>
+        </div>
+        
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">
+                    {% for message in messages %}
+                        <p style="margin: 0;">{{ message }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        
+        <form method="POST" action="{{ url_for('login_post') }}">
+            <div class="input-group">
+                <i class="fas fa-user"></i>
+                <input type="text" name="username" placeholder="Digite seu usuário" required>
+            </div>
+            
+            <div class="input-group">
+                <i class="fas fa-lock"></i>
+                <input type="password" name="password" placeholder="Digite sua senha" required>
+            </div>
+            
+            <button type="submit" class="login-btn">
+                <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i>Entrar no Sistema
+            </button>
+        </form>
+        
+    </div>
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro - Sistema Alocação PU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+</head>
+<body class="bg-gray-100 pt-6">
+    {% include 'navbar.html' %}
+    
+    <div class="container mx-auto px-4">
+        <div class="container-quadrado">
+            <div class="bg-white rounded-b-3xl shadow-3xl overflow-hidden animate-fade-in border border-gray-200 border-t-0">
+                <!-- Header -->
+                <div class="header-compact text-center">
+                    <h1 class="text-2xl font-bold text-black mb-2">Gerenciamento de Usuários</h1>
+                </div>
+
+                <!-- Conteúdo -->
+                <div class="p-6 md:p-8 w-full">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-6 shadow-sm animate-fade-in w-full">
+                        
+                        <!-- Botão Novo Usuário -->
+                        <div class="bg-gray-50 rounded-xl p-6 mb-6 text-center">
+                            <button onclick="abrirModalCadastro()" class="btn-large bg-green-600 hover:bg-green-700 text-white">
+                                <i class="fas fa-plus mr-2"></i> Novo Usuário
+                            </button>
+                        </div>
+
+                        <!-- Tabela de Usuários -->
+                        <div class="overflow-x-auto">
+                            <table id="tabela-usuarios" class="w-full border-collapse border border-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(0)">USUÁRIO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(1)">FUNÇÃO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(2)">SETOR</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-center" style="width: 200px;">AÇÕES</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usuarios-tbody">
+                                    <tr>
+                                        <td colspan="4" class="border border-gray-200 px-4 py-6 text-center text-gray-500">
+                                            Carregando usuários...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cadastro -->
+    <div id="modalCadastro" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-center">Cadastrar Usuário</h3>
+                </div>
+                
+                <form id="formCadastro">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Usuário</label>
+                        <input type="text" id="novoUsername" required class="form-input-large">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Senha</label>
+                        <input type="password" id="novoPassword" required class="form-input-large">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Função</label>
+                        <select id="novoRole" required class="form-input-large">
+                            <option value="">Selecione...</option>
+                            <option value="user">Usuário</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Setor</label>
+                        <select id="novoSetor" required class="form-input-large">
+                            <option value="">Selecione...</option>
+                            <option value="Produção">Produção</option>
+                            <option value="Administrativo">Administrativo</option>
+                            <option value="T.I">T.I</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 3rem;">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Email</label>
+                        <input type="email" id="novoEmail" required class="form-input-large">
+                    </div>
+                    
+                    <div class="flex justify-center" style="gap: 2rem;">
+                        <button type="button" onclick="fecharModalCadastro()" class="btn-modal btn-red-modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-modal btn-blue-modal">
+                            Cadastrar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edição -->
+    <div id="modalEdicao" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+                <div class="mb-4">
+                    <h3 class="text-lg font-bold text-center">Editar Usuário</h3>
+                </div>
+                
+                <form id="formEdicao">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Usuário</label>
+                        <input type="text" id="editUsername" class="form-input-large">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Função</label>
+                        <select id="editRole" required class="form-input-large">
+                            <option value="">Selecione...</option>
+                            <option value="user">Usuário</option>
+                            <option value="admin">Administrador</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 3rem;">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Setor</label>
+                        <select id="editSetor" required class="form-input-large">
+                            <option value="">Selecione...</option>
+                            <option value="Produção">Produção</option>
+                            <option value="Administrativo">Administrativo</option>
+                            <option value="T.I">T.I</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex justify-center" style="gap: 2rem;">
+                        <button type="button" onclick="fecharModalEdicao()" class="btn-modal btn-red-modal">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn-modal btn-blue-modal">
+                            Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/register.js') }}"></script>
+    <script>
+
+    </script>
+</body>
+</html>

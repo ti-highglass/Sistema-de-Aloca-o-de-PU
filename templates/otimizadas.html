@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peças Otimizadas - Sistema PU</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/protection.js') }}"></script>
+</head>
+<body class="bg-gray-100 pt-6">
+    {% include 'navbar.html' %}
+    
+    <div class="container mx-auto px-4">
+        <div class="container-quadrado">
+            <div class="bg-white rounded-b-3xl shadow-3xl overflow-hidden animate-fade-in border border-gray-200 border-t-0">
+                <!-- Header -->
+                <div class="header-compact text-center">
+                    <h1 class="text-2xl font-bold text-black mb-2">Peças Otimizadas</h1>
+                </div>
+
+                <!-- Conteúdo -->
+                <div class="p-6 md:p-8 w-full">
+                    <div class="bg-white rounded-xl border border-gray-200 p-4 md:p-6 shadow-sm animate-fade-in w-full">
+                        
+                        <!-- Botões e pesquisa -->
+                        <div class="bg-gray-50 rounded-xl p-6 mb-6">
+                            <div class="flex justify-center gap-4 mb-4">
+                                <button id="btnEnviarEstoque" onclick="enviarParaEstoque()" class="btn-large bg-green-600 hover:bg-green-700 text-white">
+                                    <i class="fas fa-check mr-2"></i> Enviar Cortadas para Estoque
+                                </button>
+                                <button id="btnExcluir" onclick="excluirOtimizadas()" class="btn-large bg-red-600 hover:bg-red-700 text-white">
+                                    <i class="fas fa-trash mr-2"></i> Excluir Selecionadas
+                                </button>
+                            </div>
+                            <div class="flex justify-center">
+                                <input type="text" id="campoPesquisaOtimizadas" placeholder="Pesquisar OP, Peça, Veículo, Local..." 
+                                       class="form-input-large w-96" maxlength="10"
+                                       oninput="filtrarTabelaOtimizadas()">
+                            </div>
+                        </div>
+
+                        <!-- Tabela -->
+                        <div class="overflow-x-auto">
+                            <table id="tabela-otimizadas" class="w-full border-collapse border border-gray-200">
+                                <thead>
+                                    <tr class="bg-gray-50">
+                                        <th class="border border-gray-200 px-4 py-3 text-center">
+                                            <input type="checkbox" id="selectAll" onchange="toggleAll()">
+                                        </th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(1)">OP-PAI</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(2)">OP</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(3)">PEÇA</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(4)">PROJETO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(5)">VEÍCULO</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(6)">LOCAL</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(7)">RACK</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-left sortable" onclick="sortTable(8)">CAMADA</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-center sortable" onclick="sortTable(9)">STATUS</th>
+                                        <th class="border border-gray-200 px-4 py-3 text-center">AÇÃO</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="otimizadas-tbody">
+                                    <tr>
+                                        <td colspan="11" class="border border-gray-200 px-4 py-6 text-center text-gray-500">
+                                            Carregando peças otimizadas...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/otimizadas.js') }}"></script>
+</body>
+</html>
