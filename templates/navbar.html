@@ -105,7 +105,12 @@
     </div>
 </div>
 
+<!-- Adicionar setor do usuário ao body para proteção de URL -->
 <script>
+{% if current_user and current_user.is_authenticated %}
+document.body.dataset.userSector = '{{ current_user.setor }}';
+{% endif %}
+
 document.addEventListener('DOMContentLoaded', function() {
     const mobileMenuButton = document.getElementById('mobile-menu-button');
     const mobileMenu = document.getElementById('mobile-menu');
@@ -146,3 +151,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Sistema de logout automático -->
 <script src="{{ url_for('static', filename='js/session.js') }}"></script>
+<!-- Proteção contra manipulação de URL -->
+<script src="{{ url_for('static', filename='js/url-protection.js') }}"></script>

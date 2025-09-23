@@ -34,6 +34,8 @@ async function carregarEstoque() {
             acaoCell.innerHTML = `<button onclick="removerPeca(${item.id})" class="btn-red text-white">Confirmar Utilização</button>`;
         });
         
+        atualizarContadorEstoque(dados.length);
+        
     } catch (error) {
         console.error('Erro ao carregar estoque:', error);
         const tbody = document.getElementById('estoque-tbody');
@@ -45,18 +47,34 @@ async function carregarEstoque() {
 
 const filtrarTabelaEstoque = () => {
     const filtro = document.getElementById('campoPesquisaEstoque').value.toLowerCase();
+    let visibleCount = 0;
+    
     document.querySelectorAll('#estoque-tbody tr').forEach(linha => {
         const cells = linha.querySelectorAll('td');
+        let match = false;
+        
         if (cells.length >= 7) {
             const peca = cells[3].textContent.toLowerCase();
             const op = cells[2].textContent.toLowerCase();
             const searchText = `${peca}${op}`;
-            linha.style.display = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+            match = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro);
         } else {
-            linha.style.display = linha.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+            match = linha.textContent.toLowerCase().includes(filtro);
         }
+        
+        linha.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
     });
+    
+    atualizarContadorEstoque(visibleCount);
 };
+
+function atualizarContadorEstoque(count) {
+    const contador = document.getElementById('contadorEstoque');
+    if (contador) {
+        contador.innerHTML = `<i class="fas fa-box mr-2"></i>${count} peça${count !== 1 ? 's' : ''}`;
+    }
+}
 
 async function removerPeca(id) {
     if (!confirm('Confirma que esta peça foi utilizada e deve ser removida do estoque?')) return;

@@ -45,6 +45,8 @@ async function carregarOtimizadas() {
             actionCell.innerHTML = `<button onclick="enviarPecaIndividual('${item.id}')" class="btn-action-large" title="Enviar para estoque"><i class="fas fa-arrow-right"></i></button>`;
         });
         
+        atualizarContadorOtimizadas(dados.length);
+        
     } catch (error) {
         tbody.innerHTML = '<tr><td colspan="11" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro ao carregar peças</td></tr>';
     }
@@ -257,19 +259,35 @@ function hideLoading() {
 
 const filtrarTabelaOtimizadas = () => {
     const filtro = document.getElementById('campoPesquisaOtimizadas').value.toLowerCase();
+    let visibleCount = 0;
+    
     document.querySelectorAll('#otimizadas-tbody tr').forEach(linha => {
         const cells = linha.querySelectorAll('td');
+        let match = false;
+        
         if (cells.length >= 8) {
             const peca = cells[3].textContent.toLowerCase();
             const op = cells[2].textContent.toLowerCase();
             const camada = cells[8].textContent.toLowerCase();
             const searchText = `${peca}${op}${camada}`;
-            linha.style.display = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+            match = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro);
         } else {
-            linha.style.display = linha.textContent.toLowerCase().includes(filtro) ? '' : 'none';
+            match = linha.textContent.toLowerCase().includes(filtro);
         }
+        
+        linha.style.display = match ? '' : 'none';
+        if (match) visibleCount++;
     });
+    
+    atualizarContadorOtimizadas(visibleCount);
 };
+
+function atualizarContadorOtimizadas(count) {
+    const contador = document.getElementById('contadorOtimizadas');
+    if (contador) {
+        contador.innerHTML = `<i class="fas fa-cogs mr-2"></i>${count} peça${count !== 1 ? 's' : ''}`;
+    }
+}
 
 function showPopup(message, isError = false) {
     const notification = document.createElement('div');

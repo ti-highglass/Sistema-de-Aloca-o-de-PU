@@ -2,7 +2,19 @@
 
 ## Descrição
 
-Sistema web desenvolvido em Flask para gerenciamento completo de alocação de peças de PU (Poliuretano) automotivas. O sistema oferece controle total do fluxo desde a coleta de dados até o armazenamento final no estoque, com funcionalidades avançadas de otimização, rastreamento e relatórios.
+Sistema web desenvolvido em Flask para gerenciamento completo de alocação de peças de PU (Poliuretano) automotivas da Opera. O sistema oferece controle total do fluxo desde a coleta de dados até o armazenamento final no estoque, com funcionalidades avançadas de otimização, rastreamento e relatórios.
+
+## 🚀 Versão Atual: 2.2
+
+**Principais atualizações:**
+- Sistema de 3 racks (RACK1, RACK2, RACK3)
+- Integração com API externa pplug.com.br
+- Sistema de etiquetas com códigos de barras
+- Envio de credenciais por email
+- Interface mobile otimizada
+- Notificações não-bloqueantes
+- Contadores dinâmicos de peças
+- Visualização de peças por local
 
 ## Funcionalidades Principais
 
@@ -25,12 +37,17 @@ Sistema web desenvolvido em Flask para gerenciamento completo de alocação de p
 - ✅ Histórico de saídas com auditoria
 - ✅ Status dinâmico de locais (Ativo/Utilizando)
 - ✅ Operações em lote (seleção múltipla)
+- ✅ Contador dinâmico de peças em estoque
+- ✅ Filtragem com atualização automática do contador
 
 ### 📍 Gerenciamento de Locais
 - ✅ Cadastro de locais COLMEIA e GAVETEIRO
 - ✅ Algoritmo de sequenciamento automático
 - ✅ Monitoramento de ocupação em tempo real
 - ✅ Validação de disponibilidade
+- ✅ Visualização de peças armazenadas por local
+- ✅ Contadores de peças por local com badges visuais
+- ✅ Ordenação por quantidade de peças
 
 ### 📈 Relatórios e Exportação
 - ✅ Geração de arquivos XML para otimização
@@ -51,6 +68,9 @@ Sistema web desenvolvido em Flask para gerenciamento completo de alocação de p
 - ✅ Modais para operações críticas
 - ✅ Proteção contra inspeção de código
 - ✅ Animações e transições suaves
+- ✅ Contadores visuais dinâmicos
+- ✅ Ícones de ordenação discretos
+- ✅ Badges coloridos para status e contagens
 
 ## Tecnologias Utilizadas
 
@@ -240,6 +260,8 @@ Sistema Alocação de PU/
 - `GET /api/estoque` - Lista itens do estoque
 - `GET /api/otimizadas` - Lista peças otimizadas
 - `GET /api/locais` - Lista locais com status
+- `GET /api/contagem-pecas-locais` - Contagem de peças por local
+- `GET /api/local-detalhes/<local>` - Detalhes das peças em um local
 - `GET /api/saidas` - Histórico paginado de saídas
 - `GET /api/logs` - Logs paginados (apenas T.I)
 - `GET /api/usuarios` - Lista usuários (apenas T.I)
@@ -387,14 +409,14 @@ Altere a função `sugerir_local_armazenamento()` em `app.py`
 
 ## Suporte e Desenvolvimento
 
-**Desenvolvido por**: Sistema Opera - TI  
-**Versão**: 2.0  
-**Data**: Janeiro 2025  
-**Licença**: Uso interno Opera  
+**Desenvolvido por**: Pedro Torres
+**GitHub**: pgtorres7
+**Versão**: 2.2  
+**Data**: Setembro de 2025  
 
 ### Contato
 - **Suporte técnico**: Setor T.I Opera
-- **Melhorias**: Solicitar via sistema interno
+- **Melhorias**: Solicitar via chamados no Jira
 - **Bugs**: Reportar ao administrador do sistema
 
 ---

@@ -309,6 +309,9 @@ def logout():
 def index():
     if current_user.setor == 'Produção':
         return redirect(url_for('otimizadas'))
+    if current_user.setor not in ['Administrativo', 'T.I']:
+        flash('Acesso negado para este setor.')
+        return redirect(url_for('otimizadas'))
     return render_template('index.html')
 
 @app.route('/estoque')
@@ -338,14 +341,17 @@ def otimizadas():
 @app.route('/saidas')
 @login_required
 def saidas():
-    if current_user.setor not in ['Produção', 'Administrativo', 'T.I']:
+    if current_user.setor not in ['Administrativo', 'T.I']:
         flash('Acesso negado para este setor.')
-        return redirect(url_for('index'))
+        return redirect(url_for('otimizadas'))
     return render_template('saidas.html')
 
 @app.route('/arquivos')
 @login_required
 def arquivos():
+    if current_user.setor not in ['Administrativo', 'T.I']:
+        flash('Acesso negado para este setor.')
+        return redirect(url_for('otimizadas'))
     return render_template('arquivos.html')
 
 
@@ -353,6 +359,9 @@ def arquivos():
 @app.route('/etiquetas')
 @login_required
 def etiquetas():
+    if current_user.setor == 'Produção':
+        flash('Acesso negado para este setor.')
+        return redirect(url_for('otimizadas'))
     return render_template('etiquetas.html')
 
 @app.route('/api/importar-etiquetas', methods=['POST', 'OPTIONS'])
@@ -560,59 +569,88 @@ def desenhar_etiqueta_simples(c, x, y, width, height, dados):
         c.drawString(x + 3*mm, y + 3*mm, codigo_barras_texto)
 
 def sugerir_local_armazenamento(tipo_peca, locais_ocupados, conn):
-    """Sugere local de armazenamento nos 3 racks começando pela letra E"""
+    """Sugere local de armazenamento preenchendo horizontalmente E1, F1, G1..."""
     
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         
-        # Buscar locais ativos disponíveis no banco
-        cur.execute("SELECT local, nome FROM public.pu_locais WHERE status = 'Ativo' ORDER BY nome, local")
+        # Buscar locais ocupados nas tabelas pu_inventory e pu_otimizadas
+        cur.execute("""
+            SELECT local FROM public.pu_inventory WHERE local IS NOT NULL
+            UNION
+            SELECT local FROM public.pu_otimizadas WHERE local IS NOT NULL AND tipo = 'PU'
+        """)
+        locais_ocupados_db = {row['local'] for row in cur.fetchall()}
+        
+        # Buscar locais ativos no banco
+        cur.execute("SELECT local, nome FROM public.pu_locais WHERE status = 'Ativo' ORDER BY local")
         locais_ativos = cur.fetchall()
         
-        print(f"DEBUG: Encontrados {len(locais_ativos)} locais ativos")
-        print(f"DEBUG: Locais ocupados: {len(locais_ocupados)}")
-        
         if not locais_ativos:
-            print("DEBUG: Nenhum local ativo encontrado")
             return 'E1', 'COLMEIA'
         
-        # Sequência de preenchimento: E descendo até P, depois D subindo até A
-        def gerar_sequencia_rack(rack_name, num_inicio, num_fim):
+        # Criar mapeamento de locais por rack
+        locais_por_rack = {}
+        for local_info in locais_ativos:
+            local = local_info['local']
+            rack = local_info['nome']
+            if rack not in locais_por_rack:
+                locais_por_rack[rack] = []
+            locais_por_rack[rack].append(local)
+        
+        # Ordenar locais por número para cada rack
+        for rack in locais_por_rack:
+            locais_por_rack[rack].sort(key=lambda x: (int(''.join(filter(str.isdigit, x))), x[0]))
+        
+        # Sequência de preenchimento horizontal: E1, F1, G1... depois E2, F2, G2...
+        def gerar_sequencia_horizontal():
             sequencia = []
-            # E até M (descendo)
-            for letra_code in range(ord('E'), ord('M') + 1):
-                letra = chr(letra_code)
-                for num in range(num_inicio, num_fim + 1):
-                    local = f"{letra}{num}"
-                    if any(row['local'] == local and row['nome'] == rack_name for row in locais_ativos):
-                        sequencia.append((local, 'COLMEIA'))
             
-            # D até A (subindo)
-            for letra_code in range(ord('D'), ord('A') - 1, -1):
-                letra = chr(letra_code)
-                for num in range(num_inicio, num_fim + 1):
-                    local = f"{letra}{num}"
-                    if any(row['local'] == local and row['nome'] == rack_name for row in locais_ativos):
-                        sequencia.append((local, 'COLMEIA'))
+            # Determinar range de números para cada rack
+            ranges_rack = {
+                'RACK1': range(1, 29),
+                'RACK2': range(29, 57), 
+                'RACK3': range(57, 82)
+            }
+            
+            # Para cada rack
+            for rack_name in ['RACK1', 'RACK2', 'RACK3']:
+                if rack_name not in locais_por_rack:
+                    continue
+                    
+                num_range = ranges_rack[rack_name]
+                
+                # Primeiro preencher todas as colunas E até M
+                for num in num_range:
+                    for letra_code in range(ord('E'), ord('M') + 1):
+                        letra = chr(letra_code)
+                        local = f"{letra}{num}"
+                        
+                        if local in locais_por_rack[rack_name]:
+                            sequencia.append((local, 'COLMEIA'))
+                
+                # Depois preencher D até A (só depois de terminar E-M)
+                for num in num_range:
+                    for letra_code in range(ord('D'), ord('A') - 1, -1):
+                        letra = chr(letra_code)
+                        local = f"{letra}{num}"
+                        
+                        if local in locais_por_rack[rack_name]:
+                            sequencia.append((local, 'COLMEIA'))
             
             return sequencia
         
-        # Gerar sequência para os 3 racks
-        sequencia_completa = []
-        sequencia_completa.extend(gerar_sequencia_rack('RACK1', 1, 28))
-        sequencia_completa.extend(gerar_sequencia_rack('RACK2', 29, 56))
-        sequencia_completa.extend(gerar_sequencia_rack('RACK3', 57, 81))
+        sequencia_completa = gerar_sequencia_horizontal()
         
-        print(f"DEBUG: Sequência completa tem {len(sequencia_completa)} locais")
+        # Combinar locais ocupados do banco com os já sugeridos nesta sessão
+        todos_ocupados = locais_ocupados_db.union(locais_ocupados)
         
         # Buscar primeiro local disponível
         for local, rack in sequencia_completa:
-            if local not in locais_ocupados:
-                print(f"DEBUG: Local sugerido: {local}")
+            if local not in todos_ocupados:
                 return local, rack
         
-        print("DEBUG: Nenhum local disponível encontrado")
-        # Se não encontrou nenhum local disponível, retornar primeiro da sequência
+        # Se não encontrou nenhum disponível, retornar primeiro da sequência
         if sequencia_completa:
             return sequencia_completa[0][0], sequencia_completa[0][1]
         
@@ -752,6 +790,7 @@ def api_dados():
                         'arquivo_status': arquivo_status
                     }
                     
+                    # IMPORTANTE: Adicionar o local sugerido aos ocupados para próximas sugestões
                     if local_sugerido:
                         locais_ocupados.add(local_sugerido)
                     dados_filtrados.append(item)
@@ -888,6 +927,8 @@ def otimizar_pecas():
         
         # Inserir cada peça selecionada quebrada por camadas
         for peca in pecas_selecionadas:
+            print(f"DEBUG: Processando peça {peca['peca']}")
+            
             # Buscar camadas da peça na tabela camadas_pu
             cur.execute("""
                 SELECT camada, qtde FROM public.camadas_pu 
@@ -895,12 +936,14 @@ def otimizar_pecas():
             """, (peca['peca'],))
             
             camadas = cur.fetchall()
+            print(f"DEBUG: Encontradas {len(camadas)} camadas para peça {peca['peca']}")
             
             if camadas:
                 # Se encontrou camadas, quebrar a peça
                 for camada_info in camadas:
                     camada = camada_info['camada']
-                    quantidade = camada_info['qtde']
+                    quantidade = int(camada_info['qtde'])
+                    print(f"DEBUG: Camada {camada}, quantidade {quantidade}")
                     
                     # Inserir a quantidade de linhas para cada camada
                     for i in range(quantidade):
@@ -920,7 +963,9 @@ def otimizar_pecas():
                             camada
                         ))
                         total_inseridas += 1
+                        print(f"DEBUG: Inserida linha {i+1} da camada {camada}")
             else:
+                print(f"DEBUG: Nenhuma camada encontrada para {peca['peca']}, inserindo sem camada")
                 # Se não encontrou camadas, inserir como antes (sem camada)
                 cur.execute("""
                     INSERT INTO public.pu_otimizadas (op_pai, op, peca, projeto, veiculo, local, rack, user_otimizacao, tipo)
@@ -1057,8 +1102,8 @@ def enviar_estoque():
         # Inserir no estoque
         for peca in pecas:
             cur.execute("""
-                INSERT INTO public.pu_inventory (op_pai, op, peca, projeto, veiculo, local, rack)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO public.pu_inventory (op_pai, op, peca, projeto, veiculo, local, rack, data, usuario)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
             """, (
                 peca['op_pai'],
                 peca['op'],
@@ -1066,7 +1111,8 @@ def enviar_estoque():
                 peca['projeto'],
                 peca['veiculo'],
                 peca['local'],
-                peca['rack']
+                peca['rack'],
+                current_user.username
             ))
         
         # Log da ação
@@ -1305,6 +1351,27 @@ def api_locais():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/contagem-pecas-locais')
+@login_required
+def api_contagem_pecas_locais():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        cur.execute("""
+            SELECT local, COUNT(*) as total 
+            FROM public.pu_inventory 
+            WHERE local IS NOT NULL AND local != ''
+            GROUP BY local
+        """)
+        dados = [dict(row) for row in cur.fetchall()]
+        
+        conn.close()
+        return jsonify(dados)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/local-detalhes/<local>')
 @login_required
 def api_local_detalhes(local):
@@ -1350,6 +1417,8 @@ def popular_locais_iniciais():
         except:
             pass
         
+
+        
         cur.execute("""
             CREATE TABLE IF NOT EXISTS public.pu_inventory (
                 id SERIAL PRIMARY KEY,
@@ -1359,9 +1428,19 @@ def popular_locais_iniciais():
                 projeto TEXT,
                 veiculo TEXT,
                 local TEXT,
-                rack TEXT
+                rack TEXT,
+                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                usuario TEXT
             )
         """)
+        
+        # Adicionar colunas se não existirem
+        try:
+            cur.execute("ALTER TABLE public.pu_inventory ADD COLUMN IF NOT EXISTS data TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+            cur.execute("ALTER TABLE public.pu_inventory ADD COLUMN IF NOT EXISTS usuario TEXT")
+            conn.commit()
+        except:
+            pass
         
         cur.execute("""
             CREATE TABLE IF NOT EXISTS public.pu_exit (

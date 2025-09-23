@@ -186,24 +186,15 @@ th.sortable:hover {
     background-color: #e5e7eb;
 }
 
-th.sortable::after {
-    content: '↕';
-    position: absolute;
-    right: 8px;
-    opacity: 0.5;
-    font-size: 12px;
+.sort-icon {
+    opacity: 0.3;
+    font-size: 10px;
+    margin-left: 4px;
+    transition: opacity 0.2s ease;
 }
 
-th.sort-asc::after {
-    content: '↑';
-    opacity: 1;
-    color: #3b82f6;
-}
-
-th.sort-desc::after {
-    content: '↓';
-    opacity: 1;
-    color: #3b82f6;
+th:hover .sort-icon {
+    opacity: 0.6;
 }
 
 tr:nth-child(even) { background-color: #f9fafb; }
@@ -723,6 +714,37 @@ tr:hover { background-color: #f3f4f6; }
 .md\:grid-cols-2 { 
     grid-template-columns: repeat(2, minmax(0, 1fr)); 
 }
+
+/* Badge de Contagem de Peças */
+.badge-pecas {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    background-color: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+.badge-vazio {
+    color: #9ca3af;
+    font-size: 0.875rem;
+    font-style: italic;
+}
+
+/* Cores de Status */
+.text-green-600 { color: #16a34a; }
+.text-red-600 { color: #dc2626; }
+.text-gray-600 { color: #4b5563; }
+.text-blue-800 { color: #1e40af; }
+.text-orange-800 { color: #9a3412; }
+
+.bg-blue-50 { background-color: #eff6ff; }
+.bg-blue-100 { background-color: #dbeafe; }
+.bg-orange-100 { background-color: #fed7aa; }
+.border-blue-200 { border-color: #bfdbfe; }
 
 /* Responsivo */
 @media (min-width: 768px) {

@@ -1,8 +1,8 @@
 import pandas as pd
 import unicodedata
 
-entrada = r"C:\Users\Pedro Torres\Downloads\pecas.xls"
-saida = r"C:\Users\Pedro Torres\Downloads\peças 2.xlsx"
+entrada = r"C:\Users\Pedro Torres\Downloads\pcs lib.xls"
+saida = r"C:\Users\Pedro Torres\Downloads\pçs lib1.xlsx"
 
 # Ler sem cabeçalho
 df = pd.read_excel(entrada, header=None)

@@ -46,7 +46,7 @@ async function carregarLocais() {
         console.log('Dados recebidos:', dados);
         
         // Criar lista de locais
-        criarListaLocais(dados);
+        await criarListaLocais(dados);
         
     } catch (error) {
         console.error('Erro ao carregar locais:', error);
@@ -59,17 +59,22 @@ async function carregarLocais() {
 async function mostrarDetalhesLocal(local) {
     const modal = document.createElement('div');
     modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
     modal.innerHTML = `
-        <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-content" style="max-width: 700px; max-height: 80vh; overflow-y: auto;">
             <div class="modal-header">
-                <h3>Detalhes do Local ${local}</h3>
+                <h3><i class="fas fa-box mr-2"></i>Peças no Local ${local}</h3>
                 <button class="modal-close" onclick="fecharModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="text-center text-gray-500">Carregando dados...</p>
+                <div class="text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin mr-2"></i>Carregando dados...
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn-large bg-gray-500 hover:bg-gray-600 text-white" onclick="fecharModal()">Fechar</button>
+                <button class="btn-large bg-gray-500 hover:bg-gray-600 text-white" onclick="fecharModal()">
+                    <i class="fas fa-times mr-2"></i>Fechar
+                </button>
             </div>
         </div>
     `;
@@ -82,58 +87,96 @@ async function mostrarDetalhesLocal(local) {
         const modalBody = modal.querySelector('.modal-body');
         
         if (dados.total === 0) {
-            modalBody.innerHTML = '<p class="text-center text-gray-500">Local vazio</p>';
+            modalBody.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-inbox fa-3x mb-4 text-gray-300"></i>
+                    <p class="text-lg">Local vazio</p>
+                </div>
+            `;
         } else {
-            let tabelaHTML = `
-                <p><strong>Total de peças:</strong> ${dados.total}</p>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                    <thead>
-                        <tr style="background: #f3f4f6;">
-                            <th style="border: 1px solid #d1d5db; padding: 8px;">OP</th>
-                            <th style="border: 1px solid #d1d5db; padding: 8px;">Peça</th>
-                            <th style="border: 1px solid #d1d5db; padding: 8px;">Projeto</th>
-                            <th style="border: 1px solid #d1d5db; padding: 8px;">Veículo</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            let conteudoHTML = `
+                <div class="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div class="flex items-center">
+                        <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                        <span class="font-semibold text-blue-800">Total de peças: ${dados.total}</span>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse border border-gray-300 rounded-lg overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="border border-gray-300 px-3 py-2 text-left font-semibold">OP</th>
+                                <th class="border border-gray-300 px-3 py-2 text-left font-semibold">Peça</th>
+                                <th class="border border-gray-300 px-3 py-2 text-left font-semibold">Projeto</th>
+                                <th class="border border-gray-300 px-3 py-2 text-left font-semibold">Veículo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
             
-            dados.pecas.forEach(peca => {
-                tabelaHTML += `
-                    <tr>
-                        <td style="border: 1px solid #d1d5db; padding: 8px;">${peca.op || '-'}</td>
-                        <td style="border: 1px solid #d1d5db; padding: 8px;">${peca.peca || '-'}</td>
-                        <td style="border: 1px solid #d1d5db; padding: 8px;">${peca.projeto || '-'}</td>
-                        <td style="border: 1px solid #d1d5db; padding: 8px;">${peca.veiculo || '-'}</td>
+            dados.pecas.forEach((peca, index) => {
+                const rowClass = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                conteudoHTML += `
+                    <tr class="${rowClass} hover:bg-blue-50">
+                        <td class="border border-gray-300 px-3 py-2">${peca.op || '-'}</td>
+                        <td class="border border-gray-300 px-3 py-2 font-medium">${peca.peca || '-'}</td>
+                        <td class="border border-gray-300 px-3 py-2">${peca.projeto || '-'}</td>
+                        <td class="border border-gray-300 px-3 py-2">${peca.veiculo || '-'}</td>
                     </tr>
                 `;
             });
             
-            tabelaHTML += '</tbody></table>';
-            modalBody.innerHTML = tabelaHTML;
+            conteudoHTML += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            modalBody.innerHTML = conteudoHTML;
         }
         
     } catch (error) {
         console.error('Erro:', error);
         const modalBody = modal.querySelector('.modal-body');
-        modalBody.innerHTML = '<p class="text-center text-red-500">Erro ao carregar dados</p>';
+        modalBody.innerHTML = `
+            <div class="text-center text-red-500 py-8">
+                <i class="fas fa-exclamation-triangle fa-3x mb-4"></i>
+                <p class="text-lg">Erro ao carregar dados</p>
+                <p class="text-sm mt-2">${error.message}</p>
+            </div>
+        `;
     }
 }
 
 function fecharModal() {
     const modal = document.querySelector('.modal-overlay');
     if (modal) {
-        modal.remove();
+        modal.style.display = 'none';
+        setTimeout(() => {
+            modal.remove();
+        }, 100);
     }
 }
 
 let sortDirection = {};
 
-function criarListaLocais(locais) {
+async function criarListaLocais(locais) {
     const tbody = document.getElementById('listaLocais');
     if (!tbody) return;
     
     tbody.innerHTML = '';
+    
+    // Buscar contagem de peças para cada local
+    const contagemPecas = {};
+    try {
+        const response = await fetch('/api/contagem-pecas-locais');
+        const dados = await response.json();
+        dados.forEach(item => {
+            contagemPecas[item.local] = item.total;
+        });
+    } catch (error) {
+        console.error('Erro ao buscar contagem de peças:', error);
+    }
     
     locais.forEach(local => {
         const tr = document.createElement('tr');
@@ -142,14 +185,26 @@ function criarListaLocais(locais) {
         const statusColor = local.status === 'Ativo' ? 'text-green-600' : 
                            local.status === 'Utilizando' ? 'text-red-600' : 'text-gray-600';
         
+        const totalPecas = contagemPecas[local.local] || 0;
+        const temPecas = totalPecas > 0;
+        
         tr.innerHTML = `
             <td class="px-4 py-2 font-medium">${local.local}</td>
             <td class="px-4 py-2">${local.nome}</td>
             <td class="px-4 py-2 ${statusColor} font-semibold">${local.status}</td>
             <td class="px-4 py-2 text-center">
-                ${local.status === 'Utilizando' ? `
+                ${temPecas ? `
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        ${totalPecas} peça${totalPecas > 1 ? 's' : ''}
+                    </span>
+                ` : `
+                    <span class="text-gray-400 text-sm">Vazio</span>
+                `}
+            </td>
+            <td class="px-4 py-2 text-center">
+                ${temPecas ? `
                     <button onclick="mostrarDetalhesLocal('${local.local}')" 
-                            class="btn-action btn-blue" title="Ver Peças">
+                            class="btn-action btn-blue mr-2" title="Ver Peças">
                         <i class="fas fa-eye"></i>
                     </button>
                 ` : ''}
@@ -172,12 +227,21 @@ function sortTable(columnIndex) {
     const rows = Array.from(tbody.querySelectorAll('tr'));
     
     rows.sort((a, b) => {
-        const aVal = a.cells[columnIndex].textContent.trim();
-        const bVal = b.cells[columnIndex].textContent.trim();
+        let aVal, bVal;
         
-        if (columnIndex === 0) {
+        if (columnIndex === 3) { // Coluna Peças
+            const aText = a.cells[columnIndex].textContent.trim();
+            const bText = b.cells[columnIndex].textContent.trim();
+            aVal = aText === 'Vazio' ? 0 : parseInt(aText.match(/\d+/)?.[0] || '0');
+            bVal = bText === 'Vazio' ? 0 : parseInt(bText.match(/\d+/)?.[0] || '0');
+            return isAsc ? aVal - bVal : bVal - aVal;
+        } else if (columnIndex === 0) { // Coluna Local
+            aVal = a.cells[columnIndex].textContent.trim();
+            bVal = b.cells[columnIndex].textContent.trim();
             return isAsc ? aVal.localeCompare(bVal, undefined, {numeric: true}) : bVal.localeCompare(aVal, undefined, {numeric: true});
         } else {
+            aVal = a.cells[columnIndex].textContent.trim();
+            bVal = b.cells[columnIndex].textContent.trim();
             return isAsc ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
         }
     });
