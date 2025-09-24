@@ -17,13 +17,14 @@ from apontamentos_pplug_jarinu import atualizar_apontamentos
 # Verificar se arquivo .env existe
 if not os.path.exists('.env'):
     print("ERRO: Arquivo .env não encontrado!")
-    print("Crie o arquivo .env com as credenciais do banco de dados.")
+    input("Pressione Enter para sair...")
     exit(1)
 
 load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = 'opera_pu_system_2024'
+app.permanent_session_lifetime = timedelta(hours=24)
 
 # Configurações para servidor
 app.config['JSON_AS_ASCII'] = False
@@ -40,6 +41,7 @@ def after_request(response):
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.session_protection = None
 
 # Configuração do banco PostgreSQL
 DB_CONFIG = {
@@ -54,7 +56,11 @@ DB_CONFIG = {
 if not all(DB_CONFIG.values()):
     print("ERRO: Variáveis de ambiente do banco não configuradas!")
     print(f"Valores carregados: {DB_CONFIG}")
+    input("Pressione Enter para sair...")
     exit(1)
+
+print("Configurações carregadas com sucesso!")
+print(f"Conectando ao banco: {DB_CONFIG['host']}")
 
 def enviar_email_credenciais(email_destino, usuario, senha):
     """Envia email com credenciais do usuário"""
@@ -146,7 +152,7 @@ def login_post():
     
     if user_data and check_password_hash(user_data['senha'], password):
         user = User(user_data['id'], user_data['usuario'], user_data['funcao'], user_data.get('setor', ''))
-        login_user(user)
+        login_user(user, remember=True)
         return redirect(url_for('index'))
     
     flash('Usuário ou senha inválidos')
@@ -574,14 +580,6 @@ def sugerir_local_armazenamento(tipo_peca, locais_ocupados, conn):
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         
-        # Buscar locais ocupados nas tabelas pu_inventory e pu_otimizadas
-        cur.execute("""
-            SELECT local FROM public.pu_inventory WHERE local IS NOT NULL
-            UNION
-            SELECT local FROM public.pu_otimizadas WHERE local IS NOT NULL AND tipo = 'PU'
-        """)
-        locais_ocupados_db = {row['local'] for row in cur.fetchall()}
-        
         # Buscar locais ativos no banco
         cur.execute("SELECT local, nome FROM public.pu_locais WHERE status = 'Ativo' ORDER BY local")
         locais_ativos = cur.fetchall()
@@ -642,12 +640,10 @@ def sugerir_local_armazenamento(tipo_peca, locais_ocupados, conn):
         
         sequencia_completa = gerar_sequencia_horizontal()
         
-        # Combinar locais ocupados do banco com os já sugeridos nesta sessão
-        todos_ocupados = locais_ocupados_db.union(locais_ocupados)
-        
+        # Usar apenas os locais ocupados passados como parâmetro (já incluem banco + sessão)
         # Buscar primeiro local disponível
         for local, rack in sequencia_completa:
-            if local not in todos_ocupados:
+            if local not in locais_ocupados:
                 return local, rack
         
         # Se não encontrou nenhum disponível, retornar primeiro da sequência
@@ -726,9 +722,9 @@ def api_dados():
         cur.execute("SELECT op, peca FROM public.pu_otimizadas WHERE tipo = 'PU'")
         pecas_otimizadas = cur.fetchall()
         
-        # Buscar locais ocupados
-        cur.execute("SELECT local FROM public.pu_inventory UNION SELECT local FROM public.pu_otimizadas WHERE tipo = 'PU'")
-        locais_ocupados = {row['local'] for row in cur.fetchall() if row['local']}
+        # Buscar TODOS os locais ocupados (incluindo os já otimizados)
+        cur.execute("SELECT local FROM public.pu_inventory WHERE local IS NOT NULL AND local != '' UNION SELECT local FROM public.pu_otimizadas WHERE tipo = 'PU' AND local IS NOT NULL AND local != ''")
+        locais_ocupados_fixos = {row['local'] for row in cur.fetchall()}
         
         # Criar set para busca rápida
         pecas_existentes = {f"{row['op']}_{row['peca']}" for row in pecas_estoque}
@@ -766,8 +762,8 @@ def api_dados():
             try:
                 chave_peca = f"{row['op']}_{row['peca']}"
                 if chave_peca not in pecas_existentes:
-                    # Aplicar lógica de sugestão
-                    local_sugerido, rack_sugerido = sugerir_local_armazenamento(row['peca'], locais_ocupados, conn)
+                    # Aplicar lógica de sugestão usando locais fixos ocupados
+                    local_sugerido, rack_sugerido = sugerir_local_armazenamento(row['peca'], locais_ocupados_fixos, conn)
                     
                     # Verificar se existe arquivo de corte
                     cur.execute("""
@@ -792,7 +788,7 @@ def api_dados():
                     
                     # IMPORTANTE: Adicionar o local sugerido aos ocupados para próximas sugestões
                     if local_sugerido:
-                        locais_ocupados.add(local_sugerido)
+                        locais_ocupados_fixos.add(local_sugerido)
                     dados_filtrados.append(item)
             except Exception as row_error:
                 print(f"DEBUG: Erro ao processar linha: {row_error}")
@@ -814,8 +810,22 @@ def api_estoque():
         conn = get_db_connection()
         cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
         
+        # Verificar se tabela existe
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'pu_inventory'
+            )
+        """)
+        tabela_existe = cur.fetchone()[0]
+        
+        if not tabela_existe:
+            conn.close()
+            return jsonify([])
+        
         # Buscar todos os dados
-        cur.execute("SELECT id, op_pai, op, peca, projeto, veiculo, local, rack FROM public.pu_inventory ORDER BY id DESC")
+        cur.execute("SELECT id, op_pai, op, peca, projeto, veiculo, local, rack, camada FROM public.pu_inventory ORDER BY id DESC")
         dados = cur.fetchall()
         conn.close()
         
@@ -829,7 +839,8 @@ def api_estoque():
                 'projeto': row['projeto'] or '',
                 'veiculo': row['veiculo'] or '',
                 'local': row['local'] or '',
-                'rack': row['rack'] or ''
+                'rack': row['rack'] or '',
+                'camada': row['camada'] or ''
             })
         
         print(f"DEBUG: Retornando {len(resultado)} itens do estoque")
@@ -841,63 +852,51 @@ def api_estoque():
 
 @app.route('/estoque-data')
 def estoque_data():
-    conn = get_db_connection()
-    cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
-    cur.execute("SELECT id, op_pai, op, peca, projeto, veiculo, local, rack FROM public.pu_inventory ORDER BY id DESC")
-    dados = cur.fetchall()
-    conn.close()
-    return jsonify([dict(row) for row in dados])
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        
+        # Verificar se tabela existe
+        cur.execute("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_name = 'pu_inventory'
+            )
+        """)
+        tabela_existe = cur.fetchone()[0]
+        
+        if not tabela_existe:
+            conn.close()
+            return jsonify([])
+        
+        cur.execute("SELECT id, op_pai, op, peca, projeto, veiculo, local, rack, camada FROM public.pu_inventory ORDER BY id DESC")
+        dados = cur.fetchall()
+        conn.close()
+        return jsonify([dict(row) for row in dados])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/otimizar-pecas', methods=['POST'])
 @login_required
 def otimizar_pecas():
+    conn = None
     try:
+        print("DEBUG: Iniciando otimização")
         dados = request.get_json()
+        print(f"DEBUG: Dados recebidos: {dados}")
+        
         pecas_selecionadas = dados.get('pecas', [])
+        print(f"DEBUG: {len(pecas_selecionadas)} peças selecionadas")
         
         if not pecas_selecionadas:
             return jsonify({'success': False, 'message': 'Nenhuma peça selecionada'})
         
+        print("DEBUG: Conectando ao banco")
         conn = get_db_connection()
-        cur = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur = conn.cursor()
         
-        # Verificar duplicatas antes de inserir
-        for peca in pecas_selecionadas:
-            cur.execute("""
-                SELECT COUNT(*) FROM public.pu_inventory 
-                WHERE op = %s AND peca = %s
-            """, (peca['op'], peca['peca']))
-            
-            if cur.fetchone()[0] > 0:
-                conn.close()
-                return jsonify({
-                    'success': False, 
-                    'message': f'Peça {peca["peca"]} OP {peca["op"]} já existe no estoque!'
-                })
-            
-            cur.execute("""
-                SELECT COUNT(*) FROM public.pu_otimizadas 
-                WHERE op = %s AND peca = %s
-            """, (peca['op'], peca['peca']))
-            
-            if cur.fetchone()[0] > 0:
-                conn.close()
-                return jsonify({
-                    'success': False, 
-                    'message': f'Peça {peca["peca"]} OP {peca["op"]} já existe nas otimizadas!'
-                })
-        
-        # Verificar se há espaços disponíveis
-        espacos_sem_local = [peca for peca in pecas_selecionadas if not peca.get('local') or peca.get('local') == '-' or peca.get('local') is None]
-        
-        if espacos_sem_local:
-            conn.close()
-            return jsonify({
-                'success': False, 
-                'message': f'Estoque cheio! Não há espaços disponíveis para {len(espacos_sem_local)} peça(s). Locais vazios: {[p.get("local") for p in espacos_sem_local]}'
-            })
-        
-        # Criar tabelas se não existirem
+        print("DEBUG: Criando tabela se necessário")
         cur.execute("""
             CREATE TABLE IF NOT EXISTS public.pu_otimizadas (
                 id SERIAL PRIMARY KEY,
@@ -915,76 +914,74 @@ def otimizar_pecas():
                 camada TEXT
             )
         """)
-        
-        # Adicionar colunas se não existirem
-        try:
-            cur.execute("ALTER TABLE public.pu_otimizadas ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'PU'")
-            cur.execute("ALTER TABLE public.pu_otimizadas ADD COLUMN IF NOT EXISTS camada TEXT")
-        except:
-            pass
+        conn.commit()
+        print("DEBUG: Tabela criada/verificada")
         
         total_inseridas = 0
         
-        # Inserir cada peça selecionada quebrada por camadas
-        for peca in pecas_selecionadas:
-            print(f"DEBUG: Processando peça {peca['peca']}")
+        print("DEBUG: Iniciando inserções")
+        for i, peca in enumerate(pecas_selecionadas):
+            print(f"DEBUG: Inserindo peça {i+1}: {peca}")
             
-            # Buscar camadas da peça na tabela camadas_pu
+            # Buscar camadas da peça na tabela pu_camadas
             cur.execute("""
-                SELECT camada, qtde FROM public.camadas_pu 
-                WHERE peca = %s
-            """, (peca['peca'],))
+                SELECT l1, l3 FROM public.pu_camadas
+                WHERE projeto = %s AND peca = %s
+            """, (peca.get('projeto', ''), peca.get('peca', '')))
             
-            camadas = cur.fetchall()
-            print(f"DEBUG: Encontradas {len(camadas)} camadas para peça {peca['peca']}")
+            camadas_result = cur.fetchone()
+            camadas_para_inserir = []
             
-            if camadas:
-                # Se encontrou camadas, quebrar a peça
-                for camada_info in camadas:
-                    camada = camada_info['camada']
-                    quantidade = int(camada_info['qtde'])
-                    print(f"DEBUG: Camada {camada}, quantidade {quantidade}")
-                    
-                    # Inserir a quantidade de linhas para cada camada
-                    for i in range(quantidade):
-                        cur.execute("""
-                            INSERT INTO public.pu_otimizadas (op_pai, op, peca, projeto, veiculo, local, rack, user_otimizacao, tipo, camada)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        """, (
-                            peca.get('op_pai', ''),
-                            peca['op'],
-                            peca['peca'],
-                            peca.get('projeto', ''),
-                            peca['veiculo'],
-                            peca['local'],
-                            peca['rack'],
-                            current_user.username,
-                            'PU',
-                            camada
-                        ))
-                        total_inseridas += 1
-                        print(f"DEBUG: Inserida linha {i+1} da camada {camada}")
-            else:
-                print(f"DEBUG: Nenhuma camada encontrada para {peca['peca']}, inserindo sem camada")
-                # Se não encontrou camadas, inserir como antes (sem camada)
+            if camadas_result:
+                l1_value = camadas_result[0]
+                l3_value = camadas_result[1]
+                
+                # Verificar L1
+                if l1_value and l1_value != '-' and str(l1_value).strip():
+                    try:
+                        qtd_l1 = int(l1_value)
+                        for _ in range(qtd_l1):
+                            camadas_para_inserir.append('L1')
+                    except:
+                        camadas_para_inserir.append('L1')
+                
+                # Verificar L3
+                if l3_value and l3_value != '-' and str(l3_value).strip():
+                    try:
+                        qtd_l3 = int(l3_value)
+                        for _ in range(qtd_l3):
+                            camadas_para_inserir.append('L3')
+                    except:
+                        camadas_para_inserir.append('L3')
+            
+            # Se não encontrou camadas, inserir sem camada
+            if not camadas_para_inserir:
+                camadas_para_inserir = [None]
+            
+            # Inserir uma linha para cada camada
+            for camada in camadas_para_inserir:
                 cur.execute("""
-                    INSERT INTO public.pu_otimizadas (op_pai, op, peca, projeto, veiculo, local, rack, user_otimizacao, tipo)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO public.pu_otimizadas (op_pai, op, peca, projeto, veiculo, local, rack, user_otimizacao, tipo, camada)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 'PU', %s)
                 """, (
                     peca.get('op_pai', ''),
-                    peca['op'],
-                    peca['peca'],
+                    peca.get('op', ''),
+                    peca.get('peca', ''),
                     peca.get('projeto', ''),
-                    peca['veiculo'],
-                    peca['local'],
-                    peca['rack'],
+                    peca.get('veiculo', ''),
+                    peca.get('local', ''),
+                    peca.get('rack', ''),
                     current_user.username,
-                    'PU'
+                    camada
                 ))
                 total_inseridas += 1
+            
+            print(f"DEBUG: Peça {i+1} inserida com {len(camadas_para_inserir)} camada(s)")
         
+        print("DEBUG: Fazendo commit")
         conn.commit()
         conn.close()
+        print("DEBUG: Sucesso!")
         
         return jsonify({
             'success': True, 
@@ -993,6 +990,14 @@ def otimizar_pecas():
         })
     
     except Exception as e:
+        if conn:
+            try:
+                conn.close()
+            except:
+                pass
+        import traceback
+        error_msg = traceback.format_exc()
+        print(f"ERRO na otimização: {error_msg}")
         return jsonify({'success': False, 'message': f'Erro: {str(e)}'}), 500
 
 @app.route('/api/otimizadas')
@@ -1102,8 +1107,8 @@ def enviar_estoque():
         # Inserir no estoque
         for peca in pecas:
             cur.execute("""
-                INSERT INTO public.pu_inventory (op_pai, op, peca, projeto, veiculo, local, rack, data, usuario)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s)
+                INSERT INTO public.pu_inventory (op_pai, op, peca, projeto, veiculo, local, rack, data, usuario, camada)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s)
             """, (
                 peca['op_pai'],
                 peca['op'],
@@ -1112,7 +1117,8 @@ def enviar_estoque():
                 peca['veiculo'],
                 peca['local'],
                 peca['rack'],
-                current_user.username
+                current_user.username,
+                peca.get('camada')
             ))
         
         # Log da ação
@@ -1399,115 +1405,43 @@ def popular_locais_iniciais():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Criar tabelas se não existirem
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS public.pu_locais (
-                id SERIAL PRIMARY KEY,
-                local TEXT,
-                rack TEXT,
-                status TEXT DEFAULT 'Ativo',
-                nome TEXT
-            )
-        """)
-        
-        # Adicionar coluna email na tabela users_pu se não existir
-        try:
-            cur.execute("ALTER TABLE public.users_pu ADD COLUMN IF NOT EXISTS email TEXT")
-            conn.commit()
-        except:
-            pass
-        
-
-        
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS public.pu_inventory (
-                id SERIAL PRIMARY KEY,
-                op_pai TEXT,
-                op TEXT,
-                peca TEXT,
-                projeto TEXT,
-                veiculo TEXT,
-                local TEXT,
-                rack TEXT,
-                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                usuario TEXT
-            )
-        """)
-        
-        # Adicionar colunas se não existirem
-        try:
-            cur.execute("ALTER TABLE public.pu_inventory ADD COLUMN IF NOT EXISTS data TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
-            cur.execute("ALTER TABLE public.pu_inventory ADD COLUMN IF NOT EXISTS usuario TEXT")
-            conn.commit()
-        except:
-            pass
-        
-        cur.execute("""
-            CREATE TABLE IF NOT EXISTS public.pu_exit (
-                id SERIAL PRIMARY KEY,
-                op_pai TEXT,
-                op TEXT,
-                peca TEXT,
-                projeto TEXT,
-                veiculo TEXT,
-                local TEXT,
-                rack TEXT,
-                usuario TEXT,
-                data TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                motivo TEXT
-            )
-        """)
-        
-        # Verificar se já existem locais
-        cur.execute("SELECT COUNT(*) FROM public.pu_locais")
-        count = cur.fetchone()[0]
-        
-        if count == 0:
-            # RACK1: A-M, 1-28
-            for letra_code in range(ord('A'), ord('M') + 1):
-                letra = chr(letra_code)
-                for num in range(1, 29):
-                    local = f"{letra}{num}"
-                    cur.execute("""
-                        INSERT INTO public.pu_locais (local, rack, status, nome)
-                        VALUES (%s, %s, %s, %s)
-                    """, (local, 'COLMEIA', 'Ativo', 'RACK1'))
-            
-            # RACK2: A-M, 29-56
-            for letra_code in range(ord('A'), ord('M') + 1):
-                letra = chr(letra_code)
-                for num in range(29, 57):
-                    local = f"{letra}{num}"
-                    cur.execute("""
-                        INSERT INTO public.pu_locais (local, rack, status, nome)
-                        VALUES (%s, %s, %s, %s)
-                    """, (local, 'COLMEIA', 'Ativo', 'RACK2'))
-            
-            # RACK3: A-M, 57-81
-            for letra_code in range(ord('A'), ord('M') + 1):
-                letra = chr(letra_code)
-                for num in range(57, 82):
-                    local = f"{letra}{num}"
-                    cur.execute("""
-                        INSERT INTO public.pu_locais (local, rack, status, nome)
-                        VALUES (%s, %s, %s, %s)
-                    """, (local, 'COLMEIA', 'Ativo', 'RACK3'))
-            
-            conn.commit()
-            print("Locais populados com sucesso: RACK1 (A1-M28), RACK2 (A29-M56), RACK3 (A57-M81)")
+        # Verificar se tabela pu_locais existe
+        cur.execute("SELECT COUNT(*) FROM public.pu_locais LIMIT 1")
+        print("Tabela pu_locais já existe")
         
         conn.close()
         
     except Exception as e:
-        print(f"Erro ao popular locais: {e}")
+        print(f"Tabela não existe, criando: {e}")
+        # Se deu erro, criar tabelas básicas
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            
+            cur.execute("""
+                CREATE TABLE IF NOT EXISTS public.pu_locais (
+                    id SERIAL PRIMARY KEY,
+                    local TEXT,
+                    rack TEXT,
+                    status TEXT DEFAULT 'Ativo',
+                    nome TEXT
+                )
+            """)
+            
+            conn.commit()
+            conn.close()
+            print("Tabela pu_locais criada")
+        except Exception as e2:
+            print(f"Erro ao criar tabela: {e2}")
 
 # Executar automaticamente na inicialização
 try:
+    print("Verificando tabelas...")
     popular_locais_iniciais()
-    
-
+    print("Verificação concluída!")
 except Exception as e:
-    print(f"Erro na inicialização: {e}")
+    print(f"Aviso na inicialização: {e}")
+    print("Continuando mesmo assim...")
 
 @app.route('/api/adicionar-local', methods=['POST'])
 @login_required
@@ -1828,13 +1762,12 @@ def gerar_excel_estoque():
         
         df = pd.DataFrame(dados)
         df = df.rename(columns={
-            'op_pai': 'OP-PAI',
             'op': 'OP',
             'peca': 'PEÇA',
             'projeto': 'PROJETO',
             'veiculo': 'VEÍCULO',
             'local': 'LOCAL',
-            'rack': 'RACK'
+            'camada': 'CAMADA'
         })
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1933,4 +1866,11 @@ def gerar_excel_logs():
         return jsonify({'success': False, 'message': f'Erro ao gerar Excel: {str(e)}'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9995, debug=True)
+    try:
+        print("Iniciando servidor Flask...")
+        print("Acesse: http://localhost:9995")
+        app.run(host='0.0.0.0', port=9995, debug=False)
+    except Exception as e:
+        print(f"Erro ao iniciar servidor: {e}")
+        input("Pressione Enter para sair...")
+        exit(1)

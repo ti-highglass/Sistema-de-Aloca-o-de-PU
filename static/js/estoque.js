@@ -11,7 +11,7 @@ async function carregarEstoque() {
         tbody.innerHTML = '';
         
         if (!dados || dados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Nenhum item no estoque</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Nenhum item no estoque</td></tr>';
             return;
         }
         
@@ -23,7 +23,7 @@ async function carregarEstoque() {
             checkCell.innerHTML = `<input type="checkbox" class="row-checkbox" data-id="${item.id}">`;
             checkCell.className = 'border border-gray-200 px-4 py-3 text-center';
             
-            [item.op_pai, item.op, item.peca, item.projeto, item.veiculo, item.local, item.rack].forEach(value => {
+            [item.op, item.peca, item.projeto, item.veiculo, item.local, item.camada].forEach(value => {
                 const cell = row.insertCell();
                 cell.textContent = value || '-';
                 cell.className = 'border border-gray-200 px-4 py-3 text-sm text-gray-700';
@@ -39,7 +39,7 @@ async function carregarEstoque() {
     } catch (error) {
         console.error('Erro ao carregar estoque:', error);
         const tbody = document.getElementById('estoque-tbody');
-        tbody.innerHTML = '<tr><td colspan="9" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro ao carregar dados do estoque</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro ao carregar dados do estoque</td></tr>';
     }
 }
 
@@ -54,8 +54,8 @@ const filtrarTabelaEstoque = () => {
         let match = false;
         
         if (cells.length >= 7) {
-            const peca = cells[3].textContent.toLowerCase();
-            const op = cells[2].textContent.toLowerCase();
+            const peca = cells[2].textContent.toLowerCase();
+            const op = cells[1].textContent.toLowerCase();
             const searchText = `${peca}${op}`;
             match = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro);
         } else {
@@ -160,13 +160,12 @@ async function gerarExcel() {
             if (row.style.display !== 'none') {
                 const cells = row.cells;
                 dados.push({
-                    op_pai: cells[1].textContent.trim(),
-                    op: cells[2].textContent.trim(),
-                    peca: cells[3].textContent.trim(),
-                    projeto: cells[4].textContent.trim(),
-                    veiculo: cells[5].textContent.trim(),
-                    local: cells[6].textContent.trim(),
-                    rack: cells[7].textContent.trim()
+                    op: cells[1].textContent.trim(),
+                    peca: cells[2].textContent.trim(),
+                    projeto: cells[3].textContent.trim(),
+                    veiculo: cells[4].textContent.trim(),
+                    local: cells[5].textContent.trim(),
+                    camada: cells[6].textContent.trim()
                 });
             }
         });
@@ -197,13 +196,8 @@ async function gerarExcel() {
 
 const toggleAll = () => {
     const selectAll = document.getElementById('selectAll');
-    // Selecionar apenas checkboxes visíveis (não filtrados)
-    document.querySelectorAll('.row-checkbox').forEach(cb => {
-        const row = cb.closest('tr');
-        if (row && row.style.display !== 'none') {
-            cb.checked = selectAll.checked;
-        }
-    });
+    const visibleCheckboxes = document.querySelectorAll('#estoque-tbody tr:not([style*="display: none"]) .row-checkbox');
+    visibleCheckboxes.forEach(cb => cb.checked = selectAll.checked);
 };
 
 async function saidaMassiva() {

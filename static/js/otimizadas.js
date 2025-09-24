@@ -6,17 +6,20 @@ document.addEventListener('DOMContentLoaded', () => {
 async function carregarOtimizadas() {
     const tbody = document.getElementById('otimizadas-tbody');
     try {
-        const dados = await fetch('/api/otimizadas').then(res => res.json());
+        const response = await fetch('/api/otimizadas');
+        console.log('Response status:', response.status);
+        const dados = await response.json();
+        console.log('Dados recebidos:', dados);
         
         tbody.innerHTML = '';
         
         if (dados.error) {
-            tbody.innerHTML = `<tr><td colspan="10" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro: ${dados.error}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro: ${dados.error}</td></tr>`;
             return;
         }
         
-        if (dados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Nenhuma peça otimizada</td></tr>';
+        if (!dados || dados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Nenhuma peça otimizada</td></tr>';
             return;
         }
         
@@ -28,7 +31,7 @@ async function carregarOtimizadas() {
             checkCell.innerHTML = `<input type="checkbox" class="row-checkbox" data-id="${item.id}">`;
             checkCell.className = 'border border-gray-200 px-4 py-3 text-center';
             
-            [item.op_pai, item.op, item.peca, item.projeto, item.veiculo, item.local, item.rack, item.camada].forEach(value => {
+            [item.op, item.peca, item.projeto, item.veiculo, item.local, item.camada].forEach(value => {
                 const cell = row.insertCell();
                 cell.textContent = value || '-';
                 cell.className = 'border border-gray-200 px-4 py-3 text-sm text-gray-700';
@@ -48,13 +51,14 @@ async function carregarOtimizadas() {
         atualizarContadorOtimizadas(dados.length);
         
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="11" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro ao carregar peças</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="border border-gray-200 px-4 py-6 text-center text-red-500">Erro ao carregar peças</td></tr>';
     }
 }
 
 const toggleAll = () => {
     const selectAll = document.getElementById('selectAll');
-    document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = selectAll.checked);
+    const visibleCheckboxes = document.querySelectorAll('#otimizadas-tbody tr:not([style*="display: none"]) .row-checkbox');
+    visibleCheckboxes.forEach(cb => cb.checked = selectAll.checked);
 };
 
 async function enviarParaEstoque() {
@@ -265,10 +269,10 @@ const filtrarTabelaOtimizadas = () => {
         const cells = linha.querySelectorAll('td');
         let match = false;
         
-        if (cells.length >= 8) {
-            const peca = cells[3].textContent.toLowerCase();
-            const op = cells[2].textContent.toLowerCase();
-            const camada = cells[8].textContent.toLowerCase();
+        if (cells.length >= 6) {
+            const peca = cells[2].textContent.toLowerCase();
+            const op = cells[1].textContent.toLowerCase();
+            const camada = cells[6].textContent.toLowerCase();
             const searchText = `${peca}${op}${camada}`;
             match = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro);
         } else {

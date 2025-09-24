@@ -1,6 +1,8 @@
 @echo off
 cd /d "%~dp0"
-set FLASK_APP=app.py
-set FLASK_ENV=production
+echo Iniciando Sistema de Alocacao de PU...
+echo.
 python app.py
+echo.
+echo Sistema encerrado.
 pause
