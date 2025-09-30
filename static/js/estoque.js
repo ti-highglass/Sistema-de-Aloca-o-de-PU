@@ -20,7 +20,7 @@ async function carregarEstoque() {
             row.className = 'hover:bg-gray-50';
             
             const checkCell = row.insertCell();
-            checkCell.innerHTML = `<input type="checkbox" class="row-checkbox" data-id="${item.id}">`;
+            checkCell.innerHTML = `<input type="checkbox" class="row-checkbox" data-id="${item.id}" onchange="atualizarBotaoSaida()">`;
             checkCell.className = 'border border-gray-200 px-4 py-3 text-center';
             
             [item.op, item.peca, item.projeto, item.veiculo, item.local, item.camada].forEach(value => {
@@ -31,7 +31,7 @@ async function carregarEstoque() {
             
             const acaoCell = row.insertCell();
             acaoCell.className = 'border border-gray-200 px-4 py-3 text-center';
-            acaoCell.innerHTML = `<button onclick="removerPeca(${item.id})" class="btn-red text-white">Confirmar Utilização</button>`;
+            acaoCell.innerHTML = `<button onclick="removerPeca(${item.id})" class="btn-large bg-red-600 hover:bg-red-700 text-white">Confirmar Utilização</button>`;
         });
         
         atualizarContadorEstoque(dados.length);
@@ -85,7 +85,7 @@ async function removerPeca(id) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ids: [id] })
+            body: JSON.stringify({ ids: [id], tipo_operacao: 'saida_individual' })
         });
         
         if (!response.ok) {
@@ -194,32 +194,38 @@ async function gerarExcel() {
     }
 }
 
-const toggleAll = () => {
-    const selectAll = document.getElementById('selectAll');
-    const visibleCheckboxes = document.querySelectorAll('#estoque-tbody tr:not([style*="display: none"]) .row-checkbox');
-    visibleCheckboxes.forEach(cb => cb.checked = selectAll.checked);
-};
+function atualizarBotaoSaida() {
+    const checkboxesSelecionados = document.querySelectorAll('.row-checkbox:checked');
+    const btnSaida = document.getElementById('btnSaidaSelecionadas');
+    const contador = document.getElementById('contadorSelecionadas');
+    
+    if (checkboxesSelecionados.length > 0) {
+        btnSaida.style.display = 'inline-block';
+        contador.textContent = checkboxesSelecionados.length;
+    } else {
+        btnSaida.style.display = 'none';
+    }
+}
 
-async function saidaMassiva() {
-    // Buscar apenas checkboxes selecionados que estão visíveis (não filtrados)
-    const checkboxes = Array.from(document.querySelectorAll('.row-checkbox:checked')).filter(cb => {
-        const row = cb.closest('tr');
-        return row && row.style.display !== 'none';
-    });
+async function saidaSelecionadas() {
+    const checkboxes = document.querySelectorAll('.row-checkbox:checked');
     
     if (checkboxes.length === 0) return showPopup('Selecione pelo menos uma peça para dar saída.', true);
     
-    if (!confirm(`Confirma a saída de ${checkboxes.length} peça(s) do estoque?`)) return;
+    // Alerta específico para saída massiva
+    alert(`ATENÇÃO: Você está realizando uma SAÍDA MASSIVA de ${checkboxes.length} peça(s).\n\nEsta operação será registrada nos logs como "saída massiva".`);
+    
+    if (!confirm(`Confirma a saída massiva de ${checkboxes.length} peça(s) do estoque?`)) return;
     
     try {
-        const ids = checkboxes.map(cb => parseInt(cb.dataset.id));
+        const ids = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
         
         const response = await fetch('/api/remover-estoque', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ ids })
+            body: JSON.stringify({ ids, tipo_operacao: 'saida_massiva' })
         });
         
         if (!response.ok) {
@@ -232,12 +238,14 @@ async function saidaMassiva() {
         
         if (result.success) {
             await carregarEstoque();
+            atualizarBotaoSaida();
         }
         
     } catch (error) {
         console.error('Erro:', error);
         showPopup(`${checkboxes.length} peça(s) removida(s) com sucesso!`, false);
         await carregarEstoque();
+        atualizarBotaoSaida();
     }
 }
 

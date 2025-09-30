@@ -31,11 +31,11 @@
                         <!-- Botões e pesquisa -->
                         <div class="bg-gray-50 rounded-xl p-6 mb-6">
                             <div class="flex justify-center gap-4 mb-4">
-                                <button id="btnSaidaMassiva" onclick="saidaMassiva()" class="btn-large bg-red-600 hover:bg-red-700 text-white">
-                                    <i class="fas fa-sign-out-alt mr-2"></i> Saída Massiva
-                                </button>
                                 <button onclick="gerarExcel()" class="btn-large bg-green-600 hover:bg-green-700 text-white">
                                     <i class="fas fa-file-excel mr-2"></i> Gerar Excel
+                                </button>
+                                <button id="btnSaidaSelecionadas" onclick="saidaSelecionadas()" class="btn-large bg-red-600 hover:bg-red-700 text-white" style="display: none;">
+                                    <i class="fas fa-sign-out-alt mr-2"></i> Dar Saída (<span id="contadorSelecionadas">0</span>)
                                 </button>
                             </div>
                             <div class="flex justify-center">
@@ -51,7 +51,7 @@
                                 <thead>
                                     <tr class="bg-gray-50">
                                         <th class="border border-gray-200 px-4 py-3 text-center">
-                                            <input type="checkbox" id="selectAll" onchange="toggleAll()">
+                                            <i class="fas fa-check-square text-gray-400"></i>
                                         </th>
                                         <th class="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-700 sortable" onclick="sortTable(1)">OP</th>
                                         <th class="border border-gray-200 px-4 py-3 text-left text-sm font-semibold text-gray-700 sortable" onclick="sortTable(2)">PEÇA</th>

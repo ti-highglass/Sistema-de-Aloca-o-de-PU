@@ -38,24 +38,11 @@ async function coletarDados() {
     const tbody = document.getElementById('dados-tbody');
     const btn = document.getElementById('btnColeta');
     
-    tbody.innerHTML = '<tr><td colspan="9" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Atualizando apontamentos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Carregando dados...</td></tr>';
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Atualizando...';
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Carregando...';
     
     try {
-        // Primeiro atualizar os apontamentos
-        const updateResponse = await fetch('/api/atualizar-apontamentos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (updateResponse.ok) {
-            const updateResult = await updateResponse.json();
-            console.log('Apontamentos atualizados:', updateResult.message);
-        }
-        
-        tbody.innerHTML = '<tr><td colspan="9" class="border border-gray-200 px-4 py-6 text-center text-gray-500">Carregando dados...</td></tr>';
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Carregando...';
         const params = new URLSearchParams();
         const dataInicio = document.getElementById('dataInicio').value;
         const dataFim = document.getElementById('dataFim').value;
@@ -391,9 +378,13 @@ document.getElementById('formAdicionar').addEventListener('submit', async functi
                 
                 // Coluna arquivo
                 const arquivoCell = row.insertCell();
-                arquivoCell.textContent = 'Sem arquivo de corte';
+                arquivoCell.textContent = result.peca.arquivo_status || 'Sem arquivo de corte';
                 arquivoCell.className = 'border border-gray-200 px-4 py-3 text-center';
-                arquivoCell.style.color = '#dc2626';
+                if (result.peca.arquivo_status && result.peca.arquivo_status !== 'Sem arquivo de corte') {
+                    arquivoCell.style.color = '#16a34a';
+                } else {
+                    arquivoCell.style.color = '#dc2626';
+                }
                 
                 const cellAcoes = row.insertCell();
                 cellAcoes.innerHTML = `<i onclick="deletarLinha(this)" class="fas fa-trash text-red-500 hover:text-red-700 cursor-pointer"></i>`;
