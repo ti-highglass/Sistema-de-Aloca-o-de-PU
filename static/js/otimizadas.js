@@ -263,18 +263,38 @@ function hideLoading() {
 
 const filtrarTabelaOtimizadas = () => {
     const filtro = document.getElementById('campoPesquisaOtimizadas').value.toLowerCase();
+    const tipoFiltro = document.getElementById('tipoFiltroOtimizadas').value;
     let visibleCount = 0;
     
     document.querySelectorAll('#otimizadas-tbody tr').forEach(linha => {
         const cells = linha.querySelectorAll('td');
         let match = false;
         
-        if (cells.length >= 6) {
-            const peca = cells[2].textContent.toLowerCase();
-            const op = cells[1].textContent.toLowerCase();
-            const camada = cells[6].textContent.toLowerCase();
-            const searchText = `${peca}${op}${camada}`;
-            match = searchText.includes(filtro) || linha.textContent.toLowerCase().includes(filtro);
+        if (cells.length >= 8) {
+            switch(tipoFiltro) {
+                case 'peca_op':
+                    const peca = cells[2].textContent.toLowerCase();
+                    const op = cells[1].textContent.toLowerCase();
+                    match = `${peca}${op}`.includes(filtro);
+                    break;
+                case 'op':
+                    match = cells[1].textContent.toLowerCase().includes(filtro);
+                    break;
+                case 'peca':
+                    match = cells[2].textContent.toLowerCase().includes(filtro);
+                    break;
+                case 'local':
+                    match = cells[5].textContent.toLowerCase().includes(filtro);
+                    break;
+                case 'projeto':
+                    match = cells[3].textContent.toLowerCase().includes(filtro);
+                    break;
+                case 'veiculo':
+                    match = cells[4].textContent.toLowerCase().includes(filtro);
+                    break;
+                default:
+                    match = linha.textContent.toLowerCase().includes(filtro);
+            }
         } else {
             match = linha.textContent.toLowerCase().includes(filtro);
         }

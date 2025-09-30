@@ -38,8 +38,13 @@
                                     <i class="fas fa-trash mr-2"></i> Excluir Selecionadas
                                 </button>
                             </div>
-                            <div class="flex justify-center">
-                                <input type="text" id="campoPesquisaOtimizadas" placeholder="Pesquisar OP, Peça, Veículo, Local..." 
+                            <div class="flex justify-center gap-4">
+                                <select id="tipoFiltroOtimizadas" class="form-input-large">
+                                    <option value="geral">Selecione o tipo de busca</option>
+                                    <option value="peca_op">PEÇA+OP</option>
+                                    <option value="local">LOCAL</option>
+                                </select>
+                                <input type="text" id="campoPesquisaOtimizadas" placeholder="Pesquisar..." 
                                        class="form-input-large w-96" maxlength="10"
                                        oninput="filtrarTabelaOtimizadas()">
                             </div>
